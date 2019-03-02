@@ -3,54 +3,39 @@ DIR_NAME = 'output'
 Dir.mkdir(DIR_NAME) unless Dir.exists? DIR_NAME
 OUTPUT_DIR = "#{File.dirname(__FILE__)}/#{DIR_NAME}/"
 
-# puts 'Choose language / kies je taal...'
-# puts '1 - English'
-# puts '2 - Nederlands'
+def numeric_input(string, is_float = false)
+  while true
+    print "#{string}... "
+    input = gets.chomp
 
-# while true
-#   input = gets.chomp
-#   language = input
-#
-#   break unless /^[1-2]$/.match? input
-#
-#   puts "#{input} is een incorrecte invoer, probeer opnieuw / supplies value #{input} is incorrect, please try again"
-# end
+    if is_float
+      input.tr!(',', '.')
+      input.delete!('%')
+    end
 
-while true
-  print 'Voer hypotheekwaarde in hele euro\'s in... '
-  input = gets.chomp
-  $startbedrag = input.to_i * 100
+    break if /^[0-9]+$/.match?(input) && !is_float
+    break if /^[0-9]+([.][0-9]+)?$/.match?(input) && is_float
 
-  break if /^[0-9]+$/.match? input
-
-  puts 'Alleen nummers alsjeblieft... Probeer opnieuw'
+    if is_float
+      puts "Alleen nummers alsjeblieft... Gebruik '.' als decimaalkarakter. Probeer opnieuw"
+    else
+      puts 'Alleen nummers alsjeblieft... Probeer opnieuw'
+    end
+  end
+  is_float ? input.to_f : input.to_i
 end
 
-puts "Gekozen hypotheekbedrag: €#{input},00"
+STARTBEDRAG = numeric_input('Voer hypotheekwaarde in hele euro\'s in') * 100
+puts "Gekozen hypotheekbedrag: €#{STARTBEDRAG / 100},00"
 
-print 'Voer rente in... '
-begin
-  input = gets.chomp
-  input.tr!(',', '.')
-  input.delete!('%')
-  $rente = input.to_f / 100
-  puts "Gekozen rentepercentage: #{input}%"
-rescue
-  puts "Alleen nummers alsjeblieft... Gebruik '.' als decimaalkarakter."
-  retry
-end
+RENTE = numeric_input('Voer rente in', true) / 100
+puts "Gekozen rentepercentage: #{RENTE * 100.0}%"
 
-print 'Voer looptijd in maanden in... '
-begin
-  $maanden = gets.chomp.to_i
-  puts "Gekozen looptijd: #{$maanden}"
-rescue
-  puts 'Alleen nummers alsjeblieft...'
-  retry
-end
+MAANDEN = numeric_input('Voer looptijd in maanden in')
+puts "Gekozen looptijd: #{MAANDEN}"
 
 def aflossing_met_rente(maandbedrag, resterend_bedrag)
-  inc_rente = (maandbedrag + ((resterend_bedrag * rente)/12)).to_i
+  inc_rente = (maandbedrag + ((resterend_bedrag * RENTE)/12)).to_i
   rente = inc_rente - maandbedrag
   aflossing = maandbedrag
   {inc_rente: inc_rente.to_i, rente: rente.to_i, aflossing: aflossing.to_i, restant: (resterend_bedrag - aflossing).to_i}
@@ -82,8 +67,8 @@ def bereken_maand(laatst_bekende_restant, laatste_berekening)
   nieuwe
 end
 
-eerste_aflossing = laatste_aflossing = ($startbedrag / $maanden).to_i
-resterend_bedrag = $startbedrag
+eerste_aflossing = laatste_aflossing = (STARTBEDRAG / MAANDEN).to_i
+resterend_bedrag = STARTBEDRAG
 result = false
 eerste = nil
 laatste = nil
@@ -94,7 +79,7 @@ begin
     eerste_aflossing = eerste_aflossing - 1
     laatste_aflossing = laatste_aflossing + 1
 
-    eerste = aflossing_met_rente(eerste_aflossing, $startbedrag)
+    eerste = aflossing_met_rente(eerste_aflossing, STARTBEDRAG)
     laatste = aflossing_met_rente(laatste_aflossing, laatste_aflossing)
 
     eerste_totaal = eerste[:inc_rente]
@@ -116,14 +101,14 @@ laatst_bekende_restant = resterend_bedrag - eerste[:aflossing]
 laatste_berekening = eerste
 totaal = [eerste]
 
-($maanden - 1).times do
+(MAANDEN - 1).times do
   nieuwe = bereken_maand(laatst_bekende_restant, laatste_berekening)
   totaal << nieuwe
   laatst_bekende_restant -= nieuwe[:aflossing]
   laatste_berekening = nieuwe
 end
 
-totaal_afgelost = $startbedrag
+totaal_afgelost = STARTBEDRAG
 totaal.each do |maand|
   totaal_afgelost -= maand[:aflossing]
 end
@@ -166,7 +151,7 @@ resultaat = File.open("#{OUTPUT_DIR}#{OUTPUT_FILENAME}", 'w')
 resultaat << "Totaal maandbedrag;Deel aflossing;Deel rente;Restant\n"
 
 totaal.each do |maand|
-  resultaat << "#{maand[:inc_rente]};#{maand[:aflossing]};#{maand[:rente]};#{maand[:restant]}\n"
+  resultaat << "#{maand[:inc_rente].to_f / 100.0};#{maand[:aflossing].to_f / 100.0};#{maand[:rente].to_f / 100.0};#{maand[:restant].to_f / 100.0}\n"
 end
 
 puts "Berekening #{OUTPUT_FILENAME} opgeslagen in #{OUTPUT_DIR}"
