@@ -1,41 +1,59 @@
 OUTPUT_FILENAME = 'resultaat_per_maand.csv'
-OUTPUT_DIR = "#{File.dirname(__FILE__)}/output/"
+DIR_NAME = 'output'
+Dir.mkdir(DIR_NAME) unless Dir.exists? DIR_NAME
+OUTPUT_DIR = "#{File.dirname(__FILE__)}/#{DIR_NAME}/"
 
-print 'Voer hypotheekwaarde in hele euro\'s in... '
-begin
+# puts 'Choose language / kies je taal...'
+# puts '1 - English'
+# puts '2 - Nederlands'
+
+# while true
+#   input = gets.chomp
+#   language = input
+#
+#   break unless /^[1-2]$/.match? input
+#
+#   puts "#{input} is een incorrecte invoer, probeer opnieuw / supplies value #{input} is incorrect, please try again"
+# end
+
+while true
+  print 'Voer hypotheekwaarde in hele euro\'s in... '
   input = gets.chomp
-  STARTBEDRAG = input.to_i * 100
-  puts "Gekozen hypotheekbedrag: €#{input},00"
-rescue
-  puts 'Alleen nummers alsjeblieft...'
-  retry
+  $startbedrag = input.to_i * 100
+
+  break if /^[0-9]+$/.match? input
+
+  puts 'Alleen nummers alsjeblieft... Probeer opnieuw'
 end
+
+puts "Gekozen hypotheekbedrag: €#{input},00"
 
 print 'Voer rente in... '
 begin
   input = gets.chomp
-  input.gsub!(',','.')
-  RENTE = input.to_f / 100
+  input.tr!(',', '.')
+  input.delete!('%')
+  $rente = input.to_f / 100
   puts "Gekozen rentepercentage: #{input}%"
 rescue
-  puts 'Alleen nummers alsjeblieft... Gebruik '.' als decimaalkarakter.'
+  puts "Alleen nummers alsjeblieft... Gebruik '.' als decimaalkarakter."
   retry
-end  
+end
 
 print 'Voer looptijd in maanden in... '
 begin
-  MAANDEN = gets.chomp.to_i
-  puts "Gekozen looptijd: #{MAANDEN}"
+  $maanden = gets.chomp.to_i
+  puts "Gekozen looptijd: #{$maanden}"
 rescue
   puts 'Alleen nummers alsjeblieft...'
   retry
 end
 
 def aflossing_met_rente(maandbedrag, resterend_bedrag)
-  inc_rente = (maandbedrag + ((resterend_bedrag * RENTE)/12)).to_i
+  inc_rente = (maandbedrag + ((resterend_bedrag * rente)/12)).to_i
   rente = inc_rente - maandbedrag
   aflossing = maandbedrag
-  {inc_rente: inc_rente.to_i, rente: rente.to_i, aflossing: aflossing.to_i, restant: (resterend_bedrag -= aflossing).to_i}
+  {inc_rente: inc_rente.to_i, rente: rente.to_i, aflossing: aflossing.to_i, restant: (resterend_bedrag - aflossing).to_i}
 end
 
 def bereken_maand(laatst_bekende_restant, laatste_berekening)
@@ -64,8 +82,8 @@ def bereken_maand(laatst_bekende_restant, laatste_berekening)
   nieuwe
 end
 
-eerste_aflossing = laatste_aflossing = (STARTBEDRAG / MAANDEN).to_i
-resterend_bedrag = STARTBEDRAG
+eerste_aflossing = laatste_aflossing = (startbedrag / $maanden).to_i
+resterend_bedrag = startbedrag
 result = false
 eerste = nil
 laatste = nil
@@ -76,7 +94,7 @@ begin
     eerste_aflossing = eerste_aflossing - 1
     laatste_aflossing = laatste_aflossing + 1
 
-    eerste = aflossing_met_rente(eerste_aflossing, STARTBEDRAG)
+    eerste = aflossing_met_rente(eerste_aflossing, startbedrag)
     laatste = aflossing_met_rente(laatste_aflossing, laatste_aflossing)
 
     eerste_totaal = eerste[:inc_rente]
@@ -98,14 +116,14 @@ laatst_bekende_restant = resterend_bedrag - eerste[:aflossing]
 laatste_berekening = eerste
 totaal = [eerste]
 
-(MAANDEN - 1).times do
+($maanden - 1).times do
   nieuwe = bereken_maand(laatst_bekende_restant, laatste_berekening)
   totaal << nieuwe
   laatst_bekende_restant -= nieuwe[:aflossing]
   laatste_berekening = nieuwe
 end
 
-totaal_afgelost = STARTBEDRAG
+totaal_afgelost = startbedrag
 totaal.each do |maand|
   totaal_afgelost -= maand[:aflossing]
 end
@@ -151,7 +169,7 @@ totaal.each do |maand|
   resultaat << "#{maand[:inc_rente]};#{maand[:aflossing]};#{maand[:rente]};#{maand[:restant]}\n"
 end
 
-puts "Output file #{OUTPUT_FILENAME} saved in #{OUTPUT_DIR}"
+puts "Berekening #{OUTPUT_FILENAME} opgeslagen in #{OUTPUT_DIR}"
 
 fork { exec "open \"#{OUTPUT_DIR}#{OUTPUT_FILENAME}\"" }
 
