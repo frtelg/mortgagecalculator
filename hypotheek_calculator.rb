@@ -82,8 +82,8 @@ def bereken_maand(laatst_bekende_restant, laatste_berekening)
   nieuwe
 end
 
-eerste_aflossing = laatste_aflossing = (startbedrag / $maanden).to_i
-resterend_bedrag = startbedrag
+eerste_aflossing = laatste_aflossing = ($startbedrag / $maanden).to_i
+resterend_bedrag = $startbedrag
 result = false
 eerste = nil
 laatste = nil
@@ -94,7 +94,7 @@ begin
     eerste_aflossing = eerste_aflossing - 1
     laatste_aflossing = laatste_aflossing + 1
 
-    eerste = aflossing_met_rente(eerste_aflossing, startbedrag)
+    eerste = aflossing_met_rente(eerste_aflossing, $startbedrag)
     laatste = aflossing_met_rente(laatste_aflossing, laatste_aflossing)
 
     eerste_totaal = eerste[:inc_rente]
@@ -123,7 +123,7 @@ totaal = [eerste]
   laatste_berekening = nieuwe
 end
 
-totaal_afgelost = startbedrag
+totaal_afgelost = $startbedrag
 totaal.each do |maand|
   totaal_afgelost -= maand[:aflossing]
 end
